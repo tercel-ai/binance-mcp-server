@@ -1,0 +1,27 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# 构建输出保留（MCP服务器需要）
+# build/ 
+
+# 测试和临时文件
+test-*.js
+*.tmp
+
+# IDE和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+Thumbs.db
+*.orig
+
+# 敏感配置文件（示例配置保留）
+*config_backup*

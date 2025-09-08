@@ -1,0 +1,137 @@
+# Binance MCP Server Docker Compose 配置文件
+version: '3.8'
+
+services:
+  binance-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: binance-mcp-server
+    restart: unless-stopped
+    
+    # 环境变量配置
+    environment:
+      # 基础配置
+      NODE_ENV: production
+      SERVER_MODE: http
+      PORT: 3000
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+      
+      # Binance API配置 (通过.env文件提供)
+      BINANCE_API_KEY: ${BINANCE_API_KEY}
+      BINANCE_SECRET_KEY: ${BINANCE_SECRET_KEY}
+      BINANCE_TESTNET: ${BINANCE_TESTNET:-false}
+      
+      # 可选配置
+      API_TIMEOUT: ${API_TIMEOUT:-10000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+      HEALTH_CHECK_INTERVAL: ${HEALTH_CHECK_INTERVAL:-30}
+    
+    # 端口映射
+    ports:
+      - "${PORT:-3000}:3000"
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const req = http.request({hostname: '0.0.0.0', port: 3000, path: '/message', timeout: 5000}, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # 安全设置
+    security_opt:
+      - no-new-privileges:true
+    
+    # 只读根文件系统 (除了临时目录)
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    
+    # 网络模式
+    networks:
+      - binance-mcp-network
+
+  # Nginx反向代理 (可选，用于HTTPS和负载均衡)
+  nginx:
+    image: nginx:alpine
+    container_name: binance-mcp-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+    
+    depends_on:
+      binance-mcp-server:
+        condition: service_healthy
+    
+    networks:
+      - binance-mcp-network
+    
+    # 只在需要HTTPS时启用
+    profiles:
+      - https
+
+# 网络配置
+networks:
+  binance-mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# 卷配置
+volumes:
+  nginx-logs:
+    driver: local
+
+# 开发环境配置
+# 使用: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+---
+# docker-compose.dev.yml (开发环境覆盖)
+version: '3.8'
+
+services:
+  binance-mcp-server:
+    build:
+      target: builder
+    
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      BINANCE_TESTNET: true
+    
+    volumes:
+      - .:/app
+      - /app/node_modules
+    
+    command: ["npm", "run", "dev:http"]
+    
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Node.js调试端口
