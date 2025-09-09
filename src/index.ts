@@ -4,12 +4,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import http from 'node:http';
-import {
-  CallToolRequestSchema,
-  ErrorCode,
-  ListToolsRequestSchema,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js';
 import dotenv from 'dotenv';
 
 import { BinanceClient } from './api/client.js';
@@ -84,7 +79,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 
 // 获取所有工具
@@ -110,54 +105,83 @@ const handleTool = async (name: string, args: any) => {
     const apiKey = process.env.BINANCE_API_KEY;
     const apiSecret = process.env.BINANCE_SECRET_KEY;
     const testnet = process.env.BINANCE_TESTNET === 'true';
-    
+
     if (apiKey && apiSecret) {
       const success = initializeBinanceClient(apiKey, apiSecret, testnet);
       if (!success) {
         return {
           success: false,
-          error: '❌ Binance客户端初始化失败，请检查API密钥配置'
+          error: '❌ Binance客户端初始化失败，请检查API密钥配置',
         };
       }
     } else {
       return {
         success: false,
-        error: '❌ 缺少Binance API配置，请在Claude Desktop的MCP配置中设置BINANCE_API_KEY和BINANCE_SECRET_KEY'
+        error: '❌ 缺少Binance API配置，请在Claude Desktop的MCP配置中设置BINANCE_API_KEY和BINANCE_SECRET_KEY',
       };
     }
   }
-  
+
   if (!binanceClient) {
     return {
       success: false,
-      error: '❌ Binance客户端未初始化，请检查配置'
+      error: '❌ Binance客户端未初始化，请检查配置',
     };
   }
   // 账户管理工具
-  if (name.startsWith('binance_account') || name === 'binance_spot_balances' || name === 'binance_portfolio_account' || name === 'binance_futures_positions') {
+  if (
+    name.startsWith('binance_account') ||
+    name === 'binance_spot_balances' ||
+    name === 'binance_portfolio_account' ||
+    name === 'binance_futures_positions'
+  ) {
     return await handleAccountTool(name, args, binanceClient);
   }
-  
+
   // 现货交易工具
-  if (name.startsWith('binance_spot_') && !name.includes('price') && !name.includes('orderbook') && !name.includes('klines') && !name.includes('24hr_ticker')) {
+  if (
+    name.startsWith('binance_spot_') &&
+    !name.includes('price') &&
+    !name.includes('orderbook') &&
+    !name.includes('klines') &&
+    !name.includes('24hr_ticker')
+  ) {
     return await handleSpotTool(name, args, binanceClient);
   }
-  
+
   // 合约交易工具
-  if (name.startsWith('binance_futures_') && !name.includes('price') && !name.includes('klines') && !name.includes('24hr_ticker')) {
+  if (
+    name.startsWith('binance_futures_') &&
+    !name.includes('price') &&
+    !name.includes('klines') &&
+    !name.includes('24hr_ticker')
+  ) {
     return await handleFuturesTool(name, args, binanceClient);
   }
-  
+
   // 市场数据工具
-  if (name.includes('price') || name.includes('orderbook') || name.includes('klines') || name.includes('24hr_ticker') || name.includes('exchange_info') || name.includes('server_time')) {
+  if (
+    name.includes('price') ||
+    name.includes('orderbook') ||
+    name.includes('klines') ||
+    name.includes('24hr_ticker') ||
+    name.includes('exchange_info') ||
+    name.includes('server_time')
+  ) {
     return await handleMarketTool(name, args, binanceClient);
   }
-  
+
   // 高级分析工具
-  if (name.startsWith('binance_calculate_') || name.startsWith('binance_analyze_') || name.startsWith('binance_compare_') || name.startsWith('binance_check_') || name.startsWith('binance_get_')) {
+  if (
+    name.startsWith('binance_calculate_') ||
+    name.startsWith('binance_analyze_') ||
+    name.startsWith('binance_compare_') ||
+    name.startsWith('binance_check_') ||
+    name.startsWith('binance_get_')
+  ) {
     return await handleAdvancedTool(name, args, binanceClient);
   }
-  
+
   throw new Error(`未知的工具: ${name}`);
 };
 
@@ -176,21 +200,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 // 注册工具调用处理器
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   try {
     logger.info(`执行工具: ${name}`, args ? JSON.stringify(args, null, 2) : '');
-    
+
     const result = await handleTool(name, args || {});
-    
+
     if (!result.success) {
       logger.warn(`工具执行失败: ${name} - ${result.error}`);
-      
+
       // 格式化错误消息为用户友好格式
       let errorMessage = result.error;
       if (typeof errorMessage === 'string' && !errorMessage.includes('❌') && !errorMessage.includes('💡')) {
         errorMessage = `❌ 操作失败\n\n${errorMessage}\n\n💡 如需帮助，请检查参数是否正确或联系技术支持。`;
       }
-      
+
       return {
         content: [
           {
@@ -213,10 +237,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '未知错误';
     logger.error(`工具执行异常: ${name} - ${errorMessage}`);
-    
+
     // 格式化异常消息为用户友好格式
     const formattedError = `❌ 系统异常\n\n工具执行过程中发生异常：${errorMessage}\n\n🔧 建议解决方案：\n• 检查网络连接是否正常\n• 确认API密钥配置是否正确\n• 稍后重试或联系技术支持\n• 查看系统日志获取更多信息`;
-    
+
     return {
       content: [
         {
@@ -243,7 +267,7 @@ async function main() {
         logger.info('Binance MCP 服务器启动成功');
         logger.info(`连接模式: ${binanceClient.isTestnet() ? '测试网' : '主网'}`);
       }
-      
+
       const tools = getAllTools();
       logger.info(`可用工具数量: ${tools.length}`);
       logger.info('工具类别分布:');
@@ -252,7 +276,7 @@ async function main() {
       logger.info(`  - 合约交易: 9个工具`);
       logger.info(`  - 市场数据: 9个工具`);
       logger.info(`  - 高级分析: 6个工具`);
-      
+
       // 标准 stdio 传输模式
       const transport = new StdioServerTransport();
       await server.connect(transport);
@@ -261,11 +285,11 @@ async function main() {
       // HTTP模式：延迟初始化，等待客户端连接时提供API配置
       logger.info('Binance MCP HTTP 服务器启动');
       logger.info('等待Claude Desktop客户端连接并提供API配置...');
-      
+
       // HTTP SSE 传输模式
       const port = parseInt(process.env.PORT || '3000');
       const host = process.env.HOST || '0.0.0.0';
-      
+
       // 创建HTTP服务器
       const httpServer = http.createServer((req, res) => {
         if (req.method === 'GET' && req.url === '/message') {
@@ -285,7 +309,7 @@ async function main() {
           res.end('Not Found');
         }
       });
-      
+
       // 启动HTTP服务器
       httpServer.listen(port, host, () => {
         logger.info(`HTTP SSE 服务器启动在端口 ${port}，访问路径: http://${host}:${port}/message`);

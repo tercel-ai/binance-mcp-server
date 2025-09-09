@@ -3,7 +3,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import http from 'node:http';
-import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError, } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js';
 import dotenv from 'dotenv';
 import { BinanceClient } from './api/client.js';
 import { logger } from './utils/logger.js';
@@ -98,41 +98,60 @@ const handleTool = async (name, args) => {
             if (!success) {
                 return {
                     success: false,
-                    error: '❌ Binance客户端初始化失败，请检查API密钥配置'
+                    error: '❌ Binance客户端初始化失败，请检查API密钥配置',
                 };
             }
         }
         else {
             return {
                 success: false,
-                error: '❌ 缺少Binance API配置，请在Claude Desktop的MCP配置中设置BINANCE_API_KEY和BINANCE_SECRET_KEY'
+                error: '❌ 缺少Binance API配置，请在Claude Desktop的MCP配置中设置BINANCE_API_KEY和BINANCE_SECRET_KEY',
             };
         }
     }
     if (!binanceClient) {
         return {
             success: false,
-            error: '❌ Binance客户端未初始化，请检查配置'
+            error: '❌ Binance客户端未初始化，请检查配置',
         };
     }
     // 账户管理工具
-    if (name.startsWith('binance_account') || name === 'binance_spot_balances' || name === 'binance_portfolio_account' || name === 'binance_futures_positions') {
+    if (name.startsWith('binance_account') ||
+        name === 'binance_spot_balances' ||
+        name === 'binance_portfolio_account' ||
+        name === 'binance_futures_positions') {
         return await handleAccountTool(name, args, binanceClient);
     }
     // 现货交易工具
-    if (name.startsWith('binance_spot_') && !name.includes('price') && !name.includes('orderbook') && !name.includes('klines') && !name.includes('24hr_ticker')) {
+    if (name.startsWith('binance_spot_') &&
+        !name.includes('price') &&
+        !name.includes('orderbook') &&
+        !name.includes('klines') &&
+        !name.includes('24hr_ticker')) {
         return await handleSpotTool(name, args, binanceClient);
     }
     // 合约交易工具
-    if (name.startsWith('binance_futures_') && !name.includes('price') && !name.includes('klines') && !name.includes('24hr_ticker')) {
+    if (name.startsWith('binance_futures_') &&
+        !name.includes('price') &&
+        !name.includes('klines') &&
+        !name.includes('24hr_ticker')) {
         return await handleFuturesTool(name, args, binanceClient);
     }
     // 市场数据工具
-    if (name.includes('price') || name.includes('orderbook') || name.includes('klines') || name.includes('24hr_ticker') || name.includes('exchange_info') || name.includes('server_time')) {
+    if (name.includes('price') ||
+        name.includes('orderbook') ||
+        name.includes('klines') ||
+        name.includes('24hr_ticker') ||
+        name.includes('exchange_info') ||
+        name.includes('server_time')) {
         return await handleMarketTool(name, args, binanceClient);
     }
     // 高级分析工具
-    if (name.startsWith('binance_calculate_') || name.startsWith('binance_analyze_') || name.startsWith('binance_compare_') || name.startsWith('binance_check_') || name.startsWith('binance_get_')) {
+    if (name.startsWith('binance_calculate_') ||
+        name.startsWith('binance_analyze_') ||
+        name.startsWith('binance_compare_') ||
+        name.startsWith('binance_check_') ||
+        name.startsWith('binance_get_')) {
         return await handleAdvancedTool(name, args, binanceClient);
     }
     throw new Error(`未知的工具: ${name}`);

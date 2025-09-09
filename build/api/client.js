@@ -11,12 +11,8 @@ export class BinanceClient {
             apiKey: config.apiKey,
             apiSecret: config.apiSecret,
             useServerTime: true,
-            httpBase: config.testnet
-                ? 'https://testnet.binance.vision/api'
-                : 'https://api.binance.com/api',
-            wsBase: config.testnet
-                ? 'wss://testnet.binance.vision/ws/'
-                : 'wss://stream.binance.com:9443/ws/',
+            httpBase: config.testnet ? 'https://testnet.binance.vision' : 'https://api.binance.com',
+            wsBase: config.testnet ? 'wss://testnet.binance.vision' : 'wss://stream.binance.com:9443',
         });
         logger.info(`Binance客户端初始化完成 - ${config.testnet ? '测试网' : '主网'}`);
     }
